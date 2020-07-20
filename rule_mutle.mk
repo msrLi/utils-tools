@@ -3,46 +3,22 @@
 # Itarge 2011.08.08
 ###############################################################################
 -include $(PLATFORM_PATH)/build_ignore.mk
+include ${RULES_DIR}/rule_base.mk
 
 THIS_DIR        = $(shell pwd)
-THIS_NAME       = $(notdir ${THIS_DIR})
+THIS_OBJ_NAME       = $(notdir ${THIS_DIR})
 
 BLANK_VERSION   = $(shell echo $(VERSION) | tr '.' ' ')
 ifeq (on, $(DYNAMIC_SW))
-THIS_LIB		 = $(THIS_NAME)
+THIS_LIB		 = $(THIS_OBJ_NAME)
 DYNAMIC_LINKNAME = lib$(THIS_LIB).so
 DYNAMIC_REALNAME = lib$(THIS_LIB).so.$(VERSION)
 DYNAMIC_SONAME   = lib$(THIS_LIB).so.$(word 1, $(BLANK_VERSION))
 else
-THIS_LIB        = lib${THIS_NAME}.a
+THIS_LIB        = lib${THIS_OBJ_NAME}.a
 endif
 
-THIS_EXE        = ${THIS_NAME}.out
-
-###############################################################################
-# build tools set
-###############################################################################
-MAKE    = make
-ECHO    = @echo
-RM      = @rm -rf
-MKDIR   = @mkdir -p
-LN		= ln -sf
-CD		= cd
-
-ITG_INSTALL = install
-
-AR      = ${COMPILE_PREFIX}ar
-AS      = ${COMPILE_PREFIX}as
-CC      = ${COMPILE_PREFIX}g++
-LD      = ${COMPILE_PREFIX}g++
-
-OBJDUMP = ${COMPILE_PREFIX}objdump
-
-ifneq (debug, $(RELEASE_TYPE))
-STRIP   = ${COMPILE_PREFIX}strip
-else
-STRIP   = echo 
-endif
+THIS_EXE        = ${THIS_OBJ_NAME}.out
 
 ###############################################################################
 # Output dir set
@@ -62,105 +38,31 @@ EXE_SRCS        = $(basename $(notdir $(filter-out $(EXE_IGNORE_FILE),$(wildcard
 TEST_SRCS       = $(basename $(notdir $(filter-out $(TEST_IGNORE_FILE),$(wildcard ${TEST_SRCS_DIR}/*.cpp))))
 TEST_BINS       = $(basename $(notdir $(filter-out $(TEST_IGNORE_FILE),$(wildcard ${TEST_SRCS_DIR}/*.cpp))))
 
-LIB_OBJS_DIR    = ${BUILD_DIR}/${THIS_NAME}/objs/lib
-EXE_OBJS_DIR    = ${BUILD_DIR}/${THIS_NAME}/objs/app
-TEST_OBJS_DIR   = ${BUILD_DIR}/${THIS_NAME}/objs/test
+LIB_OBJS_DIR    = ${BUILD_DIR}/${THIS_OBJ_NAME}/objs/lib
+EXE_OBJS_DIR    = ${BUILD_DIR}/${THIS_OBJ_NAME}/objs/app
+TEST_OBJS_DIR   = ${BUILD_DIR}/${THIS_OBJ_NAME}/objs/test
 LIB_OBJS        = $(addprefix ${LIB_OBJS_DIR}/,$(addsuffix .o,${LIB_SRCS_CPP}))
 LIB_OBJS        += $(addprefix ${LIB_OBJS_DIR}/,$(addsuffix .o,${LIB_SRCS_C}))
 EXE_OBJS        = $(addprefix ${EXE_OBJS_DIR}/,$(addsuffix .o,${EXE_SRCS}))
 TEST_OBJS       = $(addprefix ${TEST_OBJS_DIR}/,$(addsuffix .o,${TEST_SRCS}))
 
-LIB_DEPS_DIR    = ${BUILD_DIR}/${THIS_NAME}/deps/lib
-EXE_DEPS_DIR    = ${BUILD_DIR}/${THIS_NAME}/deps/app
-TEST_DEPS_DIR   = ${BUILD_DIR}/${THIS_NAME}/deps/test
+LIB_DEPS_DIR    = ${BUILD_DIR}/${THIS_OBJ_NAME}/deps/lib
+EXE_DEPS_DIR    = ${BUILD_DIR}/${THIS_OBJ_NAME}/deps/app
+TEST_DEPS_DIR   = ${BUILD_DIR}/${THIS_OBJ_NAME}/deps/test
 LIB_DEPS        = $(addprefix ${LIB_DEPS_DIR}/,$(addsuffix .d,${LIB_SRCS_CPP}))
 LIB_DEPS        += $(addprefix ${LIB_DEPS_DIR}/,$(addsuffix .d,${LIB_SRCS_C}))
 EXE_DEPS        = $(addprefix ${EXE_DEPS_DIR}/,$(addsuffix .d,${EXE_SRCS}))
 TEST_DEPS       = $(addprefix ${EXE_DEPS_DIR}/,$(addsuffix .d,${EXE_SRCS}))
 
-LIBS_DIR        = ${BUILD_DIR}/${THIS_NAME}/libs
-LIB_BUILD       = ${LIBS_DIR}/${THIS_LIB}
+LIB_BUILD       = ${LIBS_BUILD_DIR}/${THIS_LIB}
 
-EXES_DIR        = ${BUILD_DIR}/${THIS_NAME}/exes
+EXES_DIR        = ${BUILD_DIR}/${THIS_OBJ_NAME}/exes
 EXE_BUILD       = ${EXES_DIR}/${THIS_EXE}
 
-TESTS_DIR       = ${BUILD_DIR}/${THIS_NAME}/tests
+TESTS_DIR       = ${BUILD_DIR}/${THIS_OBJ_NAME}/tests
 TESTS_BUILD     = $(addprefix ${TESTS_DIR}/, ${TEST_SRCS})
 
 BUILD_DIR_FILES = $(shell ls -A ${BUILD_DIR})
-
-###############################################################################
-# build marco
-###############################################################################
-define OBJ_BUILD_RULE_C
-# Rule to build object file
-# param 1: object dir
-# param 2: source dir
-# param 3: source and object name
-${1}/${3}.o: ${2}/${3}.c
-	${AT}${ECHO} Compiling [ ${3} ]
-	${AT}${CC} ${CCFLAGS} -c $$< -o $$@
-endef
-
-define OBJ_BUILD_RULE_CPP
-# Rule to build object file
-# param 1: object dir
-# param 2: source dir
-# param 3: source and object name
-${1}/${3}.o: ${2}/${3}.cpp
-	${AT}${ECHO} Compiling [ ${3} ]
-	${AT}${CC} ${CCFLAGS} -c $$< -o $$@
-endef
-
-define DEP_BUILD_RULE_C
-# Rule to build denpend file
-# param 1: depend dir
-# param 2: source dir
-# param 3: object dir
-# param 4: source object and depend name
-${1}/${4}.d: ${2}/${4}.c
-	${AT}${ECHO} Dependence [ ${4} ]
-	${AT}${MKDIR} ${1}
-	${AT}${ECHO} -n ${3}/ > $$@
-	${AT}${CC} ${CCFLAGS} -MM $$< >> $$@
-endef
-
-define DEP_BUILD_RULE_CPP
-# Rule to build denpend file
-# param 1: depend dir
-# param 2: source dir
-# param 3: object dir
-# param 4: source object and depend name
-${1}/${4}.d: ${2}/${4}.cpp
-	${AT}${ECHO} Dependence [ ${4} ]
-	${AT}${MKDIR} ${1}
-	${AT}${ECHO} -n ${3}/ > $$@
-	${AT}${CC} ${CCFLAGS} -MM $$< >> $$@
-endef
-
-define TEST_BUILD_RULE_C
-# Rule to build object file
-# param 1: target dir
-# param 2: object dir
-# param 3: source dir
-# param 4: source and object name
-${2}/${4}.o: ${3}/${4}.c
-	${AT}${ECHO} Compiling [ ${4} ]
-	${AT}${CC} ${CCFLAGS} -c $$< -o $$@
-	${AT}${LD} -o ${1}/${4} ${2}/${4}.o ${LDFLAGS}
-endef
-
-define TEST_BUILD_RULE_CPP
-# Rule to build object file
-# param 1: target dir
-# param 2: object dir
-# param 3: source dir
-# param 4: source and object name
-${2}/${4}.o: ${3}/${4}.cpp
-	${AT}${ECHO} Compiling [ ${4} ]
-	${AT}${CC} ${CCFLAGS} -c $$< -o $$@
-	${AT}${LD} -o ${1}/${4} ${2}/${4}.o ${LDFLAGS}
-endef
 
 ###############################################################################
 # build flags set
@@ -179,7 +81,7 @@ CCFLAGS += -fdiagnostics-color=auto
 endif
 
 ifneq (${LIB_OBJS},)
-LDFLAGS	:= -L${LIBS_DIR} -l${THIS_NAME} ${THIS_LDFLAGS} ${PLAT_LDFLAGS}
+LDFLAGS	:= -L${LIBS_BUILD_DIR} -l${THIS_OBJ_NAME} ${THIS_LDFLAGS} ${PLAT_LDFLAGS}
 else
 LDFLAGS	:= ${THIS_LDFLAGS} ${PLAT_LDFLAGS}
 endif
@@ -191,21 +93,21 @@ endif
 
 ifeq (install, $(wildcard install))
 all: 	lib exe test
-	${AT}${ECHO} build ${THIS_NAME} done
-	sh -C ${THIS_DIR}/${ITG_INSTALL} ${BUILD_DIR} ${THIS_NAME}
+	${AT}${ECHO} build ${THIS_OBJ_NAME} done
+	sh -C ${THIS_DIR}/${ITG_INSTALL} ${BUILD_DIR} ${THIS_OBJ_NAME}
 else
 all: 	lib exe test
-	${AT}${ECHO} build ${THIS_NAME} done
+	${AT}${ECHO} build ${THIS_OBJ_NAME} done
 endif
 
 
 clean:
-ifeq (${BUILD_DIR_FILES}, ${THIS_NAME})
+ifeq (${BUILD_DIR_FILES}, ${THIS_OBJ_NAME})
 	${AT}${RM} ${BUILD_DIR}
 else
-	${AT}${RM} ${BUILD_DIR}/${THIS_NAME}
+	${AT}${RM} ${BUILD_DIR}/${THIS_OBJ_NAME}
 endif
-	${AT}${ECHO} clean ${THIS_NAME} done
+	${AT}${ECHO} clean ${THIS_OBJ_NAME} done
 
 ifneq (${LIB_OBJS},)
 lib:	build_path ${THIS_LIB}
@@ -230,9 +132,9 @@ endif
 
 ifeq (on, $(DYNAMIC_SW))
 ${THIS_LIB}: ${LIB_OBJS}
-	${AT}${LD} -shared -Wl,-soname,$(DYNAMIC_SONAME) -o $(LIBS_DIR)/$(DYNAMIC_REALNAME) $(LIB_OBJS)
-	${AT}${CD} $(LIBS_DIR); ${AT}${LN} $(DYNAMIC_REALNAME) $(DYNAMIC_SONAME)
-	${AT}${CD} $(LIBS_DIR); ${AT}${LN} $(DYNAMIC_SONAME)   $(DYNAMIC_LINKNAME)
+	${AT}${LD} -shared -Wl,-soname,$(DYNAMIC_SONAME) -o $(LIBS_BUILD_DIR)/$(DYNAMIC_REALNAME) $(LIB_OBJS)
+	${AT}${CD} $(LIBS_BUILD_DIR); ${AT}${LN} $(DYNAMIC_REALNAME) $(DYNAMIC_SONAME)
+	${AT}${CD} $(LIBS_BUILD_DIR); ${AT}${LN} $(DYNAMIC_SONAME)   $(DYNAMIC_LINKNAME)
 	${AT}${ECHO} build ${THIS_LIB} done
 else
 ${THIS_LIB}: ${LIB_OBJS}
@@ -261,7 +163,7 @@ $(foreach obj,${TEST_SRCS},$(eval $(call TEST_BUILD_RULE_CPP,${TESTS_DIR},${TEST
 -include ${EXE_DEPS}
 
 build_path:
-	${AT}${MKDIR} ${LIBS_DIR}
+	${AT}${MKDIR} ${LIBS_BUILD_DIR}
 	${AT}${MKDIR} ${EXES_DIR}
 	${AT}${MKDIR} ${TESTS_DIR}
 	${AT}${MKDIR} ${LIB_OBJS_DIR}
