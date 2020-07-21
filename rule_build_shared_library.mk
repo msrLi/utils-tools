@@ -1,92 +1,93 @@
 ###############################################################################
-# rule.mk
-# Binsonli 20200721
-# build shared library
+# rule_cpp.mk
+# Itarge 2011.08.08
 ###############################################################################
-include ${RULES_DIR}/rule_base.mk
+-include $(PLATFORM_PATH)/build_ignore.mk
+include ${RULES_DIR}/ruleBase.mk
 
-LOCAL_PATH := $(call my-dir)
-LOCAL_NAME := $(notdir ${LOCAL_PATH})
+LOCAL_PATH      = $(call my-dir)
+LOCAL_NAME      = $(notdir ${LOCAL_PATH})
+
+BLANK_VERSION   = $(shell echo $(VERSION) | tr '.' ' ')
 
 DYNAMIC_LINKNAME = lib$(LOCAL_MODULE).so
 DYNAMIC_REALNAME = lib$(LOCAL_MODULE).so.$(VERSION)
 DYNAMIC_SONAME   = lib$(LOCAL_MODULE).so.$(word 1, $(BLANK_VERSION))
 
-LIBS_DIR        = ${BUILD_DIR}/${LOCAL_NAME}/libs
-LIB_SRCS 		:=  ${LOVALLOCAL_SRC_FILES_PATH}
-LIB_SRCS		+= 	$(foreach VAR, ${LOCAL_SRC_DIRS}, $(wildcard ${VAR}/*.c))
-LIB_SRCS        += 	$(foreach VAR, ${LOCAL_SRC_DIRS}, $(wildcard ${VAR}/*.cpp))
+###############################################################################
+# build tools set
+###############################################################################
+# AR      = ${COMPILE_PREFIX}ar
+# AS      = ${COMPILE_PREFIX}as
+CC      = ${COMPILE_PREFIX}gcc
+LD      = ${COMPILE_PREFIX}g++
 
-# LIB_SRCS        = $(basename $(notdir $(filter-out $(LIB_IGNORE_FILE),$(wildcard ${LIB_SRCS_DIR}/*.c))))  //去掉后缀
+
+###############################################################################
+# Output dir set
+###############################################################################
+LIB_SRCS_C :=
+LIB_SRCS_C += $(foreach subdir,${LOCAL_SRC_PATH},  $(filter-out $(LIB_IGNORE_FILE),$(wildcard ${subdir}/*.c)))
+# LIB_SRCS_C      = $(filter-out $(LIB_IGNORE_FILE),$(wildcard ${LOCAL_SRC_PATH}/*.c))
+
+LIB_SRCS_BASENAME = $(basename $(notdir ${LIB_SRCS_C}))
 LIB_OBJS_DIR    = ${BUILD_DIR}/${LOCAL_NAME}/objs
-LIB_OBJS        = $(addprefix ${LIB_OBJS_DIR}/,$(addsuffix .o,$(basename ${LIB_SRCS})))
-
+# LIB_OBJS        = $(addprefix ${LIB_OBJS_DIR}/,$(addsuffix .o,${LIB_SRCS_CPP}))
+LIB_OBJS        += $(addprefix ${LIB_OBJS_DIR}/,$(addsuffix .o,$(basename ${LIB_SRCS_C})))
 
 LIB_DEPS_DIR    = ${BUILD_DIR}/${LOCAL_NAME}/deps
-LIB_DEPS_FILE   = $(addprefix ${LIB_DEPS_DIR}/,$(addsuffix .d,$(basename ${LIB_SRCS})))
+LIB_DEPS        += $(addprefix ${LIB_DEPS_DIR}/,$(addsuffix .d,$(basename ${LIB_SRCS_C})))
 
-###############################################################################
-# build flags set
-###############################################################################
-ASFLAGA += ${THIS_ASFLAGS} ${PLAT_ASFLAGS}
-ifeq (on, $(DYNAMIC_SW))
-CCFLAGS += -fPIC ${THIS_CCFLAGS} ${PLAT_CCFLAGS} -DITARGE_LIB_VERSION=\"$(VERSION)\"
-else
-CCFLAGS += ${THIS_CCFLAGS} ${PLAT_CCFLAGS} -DITARGE_LIB_VERSION=\"$(VERSION)\"
-endif
 
-############判断GCC版本是否大于4.9.0##############################
-GCC_VER_GT490 := $(shell echo `${CC} -dumpversion | cut -f1-2 -d.` \>= 4.9 | sed -e 's/\./*100+/g' | bc )
-ifeq ($(GCC_VER_GT490), 1)
-CCFLAGS += -fdiagnostics-color=auto
-endif
+LIBS_DIR        = ${BUILD_DIR}/${LOCAL_NAME}/libs
+LIB_BUILD       = ${LIBS_DIR}/${LOCAL_MODULE}
 
-ifneq (${LIB_OBJS},)
-LDFLAGS	:= -L${LIBS_DIR} -l${THIS_NAME} ${THIS_LDFLAGS} ${PLAT_LDFLAGS}
-else
-LDFLAGS	:= ${THIS_LDFLAGS} ${PLAT_LDFLAGS}
-endif
 
-# $(foreach dep,${LIB_SRCS},$(eval $(call PRINT_ITEM,${dep})))
+BUILD_DIR_FILES = $(shell ls -A ${BUILD_DIR})
 
 ###############################################################################
 # build rule 
 ###############################################################################
-.PHONY: all libs clean build_path 
+.PHONY: all clean lib build_path
 
-all:	build_path libs
-	echo ${LIB_DEPS_FILE}
+ifeq (install, $(wildcard install))
+all:	lib exe test
+	${AT}${ECHO} build ${LOCAL_NAME} done
+	sh -C ${LOCAL_PATH}/${ITG_INSTALL} ${BUILD_DIR} ${LOCAL_NAME}
+else
+all: 	lib exe test
+	${AT}${ECHO} build ${LOCAL_NAME} done
+endif
 
-
-# @ echo ${LIB_SRCS}
-# @ echo ${LIB_OBJS}
-# @ echo $(LIB_DEPS_FILE)
+clean:
+ifeq (${BUILD_DIR_FILES}, ${LOCAL_NAME})
+	${AT}${RM} ${BUILD_DIR}
+else
+	${AT}${RM} ${BUILD_DIR}/${LOCAL_NAME}
+endif
+	${AT}${ECHO} clean ${LOCAL_NAME} done
 
 ifneq (${LIB_OBJS},)
-libs:	build_path ${LOCAL_MODULE}
-	echo Binson 
+lib:	build_path ${LOCAL_MODULE}
 else
-libs:	build_path
+lib:	build_path
 endif
 
 ${LOCAL_MODULE}: ${LIB_OBJS}
-	@echo test
+	${AT}${ECHO} "lib path"
 	${AT}${LD} -shared -Wl,-soname,$(DYNAMIC_SONAME) -o $(LIBS_DIR)/$(DYNAMIC_REALNAME) $(LIB_OBJS)
 	${AT}${CD} $(LIBS_DIR); ${AT}${LN} $(DYNAMIC_REALNAME) $(DYNAMIC_SONAME)
 	${AT}${CD} $(LIBS_DIR); ${AT}${LN} $(DYNAMIC_SONAME)   $(DYNAMIC_LINKNAME)
 	${AT}${ECHO} build ${LOCAL_MODULE} done
 
-
-
-# build_libs
-build_libs: $(LOCAL_MODULE)
-
-# $(foreach dep,${LIB_SRCS}, $(shell "echo binson ${dep}))
-$(foreach dep,${LIB_SRCS},$(eval $(call DEP_BUILD_RULE,${LIB_DEPS_DIR},${LOCAL_PATH},${LIB_OBJS_DIR},${dep})))
-# $(foreach dep,${LIB_SRCS},$(eval $(call DEP_BUILD_RULE,${LIB_DEPS_DIR},${LOCAL_PATH},${LIB_OBJS_DIR},${dep}, $(notdir ${dep}))))
-$(foreach obj,${LIB_SRCS},$(eval $(call OBJ_BUILD_RULE,${LIB_OBJS_DIR},${LIB_SRCS_DIR},${obj})))
--include ${LIB_DEPS_FILE}
+$(foreach dep,${LIB_SRCS_C},$(eval $(call DEP_BUILD_RULE,${LIB_DEPS_DIR}/$(dir ${dep}),${LOCAL_PATH}/$(dir ${dep}),${LIB_OBJS_DIR}/$(dir ${dep}),$(notdir ${dep}))))
+$(foreach obj,${LIB_SRCS_C},$(eval $(call OBJ_BUILD_RULE,${LIB_OBJS_DIR}/$(dir ${obj}),${LOCAL_PATH}/$(dir ${obj}),$(notdir ${obj}))))
+-include ${LIB_DEPS}
 
 build_path:
-	$(foreach obj,${LIB_SRCS},$(eval $(call BUILD_PATH,${LIB_OBJS_DIR},${obj})))
-	$(foreach dep,${LIB_SRCS},$(eval $(call BUILD_PATH,${LIB_DEPS_DIR},${dep})))
+	${AT}${MKDIR} ${LIBS_DIR}
+	${AT}${MKDIR} ${LIB_OBJS_DIR}
+	${AT}${MKDIR} ${LIB_DEPS_DIR}
+	$(foreach obj,${LIB_SRCS_C},$(eval $(call OBJ_BUILD_PATH,${LIB_OBJS_DIR}/$(dir ${obj}))))
+
+
